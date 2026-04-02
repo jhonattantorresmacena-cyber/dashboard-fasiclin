@@ -118,8 +118,11 @@
 </div>
 
 <script>
+    // CONFIGURAÇÃO DOS DADOS
     const SHEET_ID = '1M2TGuEkzyOXgcxGK9ujYDknIgjvWlveHHsSpqnvv5j4';
-    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=1575732509`;
+    const GID = '1575732509';
+    // ALTERAÇÃO SUGERIDA: Novo formato de link para maior compatibilidade com GitHub Pages
+    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 
     let rawData = [];
     let filteredData = []; 
@@ -129,12 +132,10 @@
     const F_GRAY = '#a395a8';
 
     window.onload = function() {
-        // CORREÇÃO: Registro do plugin necessário para exibir números nos gráficos
         Chart.register(ChartDataLabels);
         fetchDataFromSheets();
     };
 
-    // CORREÇÃO: Função para tratar datas brasileiras de forma segura
     function parseDate(d) {
         if (!d) return null;
         if (d instanceof Date) return d;
@@ -153,14 +154,27 @@
     async function fetchDataFromSheets() {
         document.getElementById('loadingOverlay').style.display = 'flex';
         try {
-            const response = await fetch(SHEET_CSV_URL);
+            // Adicionado parâmetro de cache para garantir dados novos
+            const response = await fetch(SHEET_CSV_URL + "&cache=" + new Date().getTime());
+            
+            if (!response.ok) throw new Error("A planilha respondeu com erro " + response.status);
+
             const csvText = await response.text();
+            
+            // Verifica se o que voltou foi HTML (página de login) em vez de CSV
+            if (csvText.includes("<!DOCTYPE") || csvText.includes("login")) {
+                throw new Error("Acesso negado. Certifique-se que a planilha está 'Publicada na Web'.");
+            }
+
             const workbook = XLSX.read(csvText, {type: 'string', cellDates: true});
             rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+            
+            if (rawData.length === 0) throw new Error("A planilha parece estar vazia.");
+
             initDashboard();
         } catch (error) {
-            console.error("Erro ao carregar dados:", error);
-            alert("Erro na conexão com a nuvem. Verifique se a planilha está publicada na web.");
+            console.error("Erro detalhado:", error);
+            alert("⚠️ Erro ao conectar: " + error.message);
         } finally {
             document.getElementById('loadingOverlay').style.display = 'none';
         }
@@ -207,7 +221,6 @@
     function filterData() {
         const selProc = document.getElementById('procSelect').value;
         
-        // CORREÇÃO: Atualiza a variável global que o PDF usará depois
         filteredData = rawData.filter(row => {
             const d = getVal(row, 'DATA');
             const date = parseDate(d);
@@ -232,7 +245,7 @@
 
         data.forEach(row => {
             const q = cleanNum(getVal(row, 'QUANTIDADE'));
-            const v = cleanNum(getVal(row, 'VALORTOTAL'));
+            const v = cleanNum(getVal(row, 'VALOR')); // Busca simplificada por 'VALOR'
             const proc = (getVal(row, 'PROCEDIMENTO') || 'OUTROS').toString().trim();
             const tur = (getVal(row, 'TURMA') || 'N/A').toString().trim();
             const cli = (getVal(row, 'CLINICA') || 'N/A').toString().trim();
@@ -333,7 +346,6 @@
         doc.setTextColor(100);
         doc.text(`Filtro Aplicado: ${selectedMonth} | Procedimento: ${document.getElementById('procSelect').value}`, 14, 28);
 
-        // CORREÇÃO: Pega os dados filtrados atuais (limite de 100 p/ o PDF não travar)
         const exportData = filteredData.length > 0 ? filteredData.slice(0, 100) : rawData.slice(0, 100);
         
         const tableData = exportData.map(row => {
@@ -343,7 +355,7 @@
                 dateStr,
                 getVal(row, 'PROCEDIMENTO') || 'N/A',
                 getVal(row, 'TURMA') || 'N/A',
-                cleanNum(getVal(row, 'VALORTOTAL')).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})
+                cleanNum(getVal(row, 'VALOR')).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})
             ];
         });
 
