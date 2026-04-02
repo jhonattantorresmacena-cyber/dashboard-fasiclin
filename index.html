@@ -151,30 +151,29 @@
         return isNaN(fallback) ? null : fallback;
     }
 
-    async function fetchDataFromSheets() {
+   async function fetchDataFromSheets() {
         document.getElementById('loadingOverlay').style.display = 'flex';
         try {
-            // Adicionado parâmetro de cache para garantir dados novos
-            const response = await fetch(SHEET_CSV_URL + "&cache=" + new Date().getTime());
+            // USANDO O FORMATO /PUB QUE É O MAIS ESTÁVEL
+            const URL_FINAL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=${GID}&output=csv`;
             
-            if (!response.ok) throw new Error("A planilha respondeu com erro " + response.status);
+            const response = await fetch(URL_FINAL);
+            
+            if (!response.ok) throw new Error("Status: " + response.status);
 
             const csvText = await response.text();
             
-            // Verifica se o que voltou foi HTML (página de login) em vez de CSV
             if (csvText.includes("<!DOCTYPE") || csvText.includes("login")) {
-                throw new Error("Acesso negado. Certifique-se que a planilha está 'Publicada na Web'.");
+                throw new Error("O Google retornou uma página de login. A planilha NÃO está pública.");
             }
 
             const workbook = XLSX.read(csvText, {type: 'string', cellDates: true});
             rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
             
-            if (rawData.length === 0) throw new Error("A planilha parece estar vazia.");
-
             initDashboard();
         } catch (error) {
-            console.error("Erro detalhado:", error);
-            alert("⚠️ Erro ao conectar: " + error.message);
+            console.error("Erro:", error);
+            alert("⚠️ Erro ao conectar: " + error.message + "\n\n1. Verifique se a planilha está publicada como CSV.\n2. Tente usar o 4G do celular.");
         } finally {
             document.getElementById('loadingOverlay').style.display = 'none';
         }
