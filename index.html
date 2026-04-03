@@ -2,271 +2,149 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>FASICLIN • Dashboard Enterprise</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>FASICLIN - Gestão Inteligente</title>
 
 <style>
-:root{
---green:#299947;
---bg:#f4f6f9;
---card:#ffffff;
---text:#2c3e50;
+body {
+  font-family: Arial;
+  background: #f4f6f9;
+  margin: 0;
 }
 
-body{
-font-family:'Segoe UI';
-margin:0;
-background:var(--bg);
+header {
+  padding: 20px;
+  font-size: 22px;
+  font-weight: bold;
 }
 
-header{
-background:#fff;
-padding:15px 30px;
-display:flex;
-justify-content:space-between;
-align-items:center;
-box-shadow:0 2px 8px rgba(0,0,0,.05);
+.container {
+  padding: 20px;
 }
 
-.container{
-padding:25px;
+.cards {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
 }
 
-.filtros{
-display:flex;
-gap:10px;
-margin-bottom:20px;
-flex-wrap:wrap;
+.card {
+  flex: 1;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-select{
-padding:10px;
-border-radius:8px;
-border:1px solid #ddd;
-}
-
-.cards{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:20px;
-margin-bottom:20px;
-}
-
-.card{
-background:var(--card);
-padding:20px;
-border-radius:12px;
-box-shadow:0 5px 20px rgba(0,0,0,.05);
-}
-
-.card h3{
-margin:0;
-font-size:14px;
-color:#777;
-}
-
-.valor{
-font-size:30px;
-color:var(--green);
-font-weight:bold;
-}
-
-.grid{
-display:grid;
-grid-template-columns:2fr 1fr;
-gap:20px;
-}
-
-.loader{
-position:fixed;
-top:0;left:0;
-width:100%;
-height:100%;
-background:#fff;
-display:flex;
-align-items:center;
-justify-content:center;
-font-size:20px;
-z-index:999;
+.valor {
+  font-size: 26px;
+  color: green;
+  margin-top: 10px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="loader" class="loader">🔄 Carregando dados...</div>
-
-<header>
-<h2>FASICLIN • Gestão Inteligente</h2>
-</header>
+<header>FASICLIN • Gestão Inteligente</header>
 
 <div class="container">
 
-<div class="filtros">
-<select id="procedimento"></select>
-<select id="clinica"></select>
-<select id="turma"></select>
-<select id="mes"></select>
-</div>
+  <div class="cards">
+    <div class="card">
+      <div>Total de Atendimentos</div>
+      <div id="total" class="valor">0</div>
+    </div>
 
-<div class="cards">
-<div class="card">
-<h3>Total de Atendimentos</h3>
-<div id="total" class="valor">0</div>
-</div>
+    <div class="card">
+      <div>Faturamento</div>
+      <div id="faturamento" class="valor">R$ 0</div>
+    </div>
 
-<div class="card">
-<h3>Faturamento</h3>
-<div id="faturamento" class="valor">R$ 0</div>
-</div>
-
-<div class="card">
-<h3>Eficiência</h3>
-<div id="eficiencia" class="valor">0%</div>
-</div>
-</div>
-
-<div class="grid">
-<div class="card">
-<h3>Faturamento por Procedimento</h3>
-<canvas id="grafico"></canvas>
-</div>
-
-<div class="card">
-<h3>Ranking</h3>
-<ul id="ranking"></ul>
-</div>
-</div>
+    <div class="card">
+      <div>Eficiência</div>
+      <div id="eficiencia" class="valor">0%</div>
+    </div>
+  </div>
 
 </div>
 
 <script>
-  let dados=[];
-let chart;
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14Ylz2lkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHC8I1vIuwU_2X0idkNswPkO8tum1kmScpspHo5A/pub?output=csv";
 
-const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14Ylz2lkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHC8I1vIuwU_2X0idkNswPkO8tum1kmScpspHo5A/pub?output=csv";
+let dados = [];
 
-
-// 🔥 LOAD
-async function fetchData(){
-try{
-const res=await fetch(URL);
-const csv=await res.text();
-
-const linhas=csv.split("\n").map(l=>l.split(","));
-const headers=linhas[0];
-
-dados=linhas.slice(1).map(l=>{
-let obj={};
-headers.forEach((h,i)=> obj[h.trim()]=l[i]);
-return obj;
-});
-
-init();
-
-}catch(e){
-alert("Erro ao carregar dados");
-console.error(e);
+function toNumber(v) {
+  if (!v) return 0;
+  return parseFloat(
+    v.replace("R$", "")
+     .replace(/\./g, "")
+     .replace(",", ".")
+     .trim()
+  ) || 0;
 }
 
-document.getElementById("loader").style.display="none";
+async function fetchData() {
+  try {
+    const res = await fetch(CSV_URL);
+
+    if (!res.ok) {
+      throw new Error("Erro ao acessar planilha");
+    }
+
+    const text = await res.text();
+
+    const linhas = text.split("\n").map(l => l.split(","));
+
+    dados = linhas.slice(1)
+      .map(l => ({
+        DATA: l[0]?.trim(),
+        PROCEDIMENTO: l[1]?.trim(),
+        QUANTIDADE: l[2]?.trim(),
+        VALOR: l[4]?.trim()
+      }))
+      .filter(l =>
+        l.DATA &&
+        l.PROCEDIMENTO &&
+        !l.DATA.includes("TOTAL") &&
+        !l.PROCEDIMENTO.includes("CLINICA") &&
+        !isNaN(parseInt(l.QUANTIDADE))
+      );
+
+    console.log("Dados tratados:", dados);
+
+    atualizarDashboard();
+
+  } catch (e) {
+    alert("Erro ao carregar dados da planilha");
+    console.error(e);
+  }
 }
 
-// 🔥 INIT
-function init(){
-popularFiltros();
-atualizar();
+function atualizarDashboard() {
+
+  let total = 0;
+  let faturamento = 0;
+
+  dados.forEach(d => {
+    const qtd = parseInt(d.QUANTIDADE) || 0;
+    const valor = toNumber(d.VALOR);
+
+    total += qtd;
+    faturamento += valor;
+  });
+
+  const eficiencia = total > 0 ? (faturamento / total) : 0;
+
+  document.getElementById("total").innerText = total;
+  document.getElementById("faturamento").innerText =
+    "R$ " + faturamento.toLocaleString("pt-BR");
+
+  document.getElementById("eficiencia").innerText =
+    eficiencia.toFixed(2) + "%";
 }
 
-// 🔥 FILTROS
-function popularFiltros(){
-
-const ids=["procedimento","clinica","turma","mes"];
-
-ids.forEach(id=>{
-const el=document.getElementById(id);
-if(!el) return;
-el.innerHTML='<option value="TODOS">Todos</option>';
-});
-
-[...new Set(dados.map(d=>d.PROCEDIMENTO))].forEach(v=>{
-if(v) procedimento.innerHTML+=`<option>${v}</option>`;
-});
-
-[...new Set(dados.map(d=>d.CLINICA))].forEach(v=>{
-if(v) clinica.innerHTML+=`<option>${v}</option>`;
-});
-
-[...new Set(dados.map(d=>d.TURMA))].forEach(v=>{
-if(v) turma.innerHTML+=`<option>${v}</option>`;
-});
-
-[...new Set(dados.map(d=>d.DATA?.substring(3,10)))].forEach(v=>{
-if(v) mes.innerHTML+=`<option>${v}</option>`;
-});
-
-procedimento.onchange=atualizar;
-clinica.onchange=atualizar;
-turma.onchange=atualizar;
-mes.onchange=atualizar;
-}
-
-// 🔥 UPDATE
-function atualizar(){
-
-const p=procedimento.value;
-const c=clinica.value;
-const t=turma.value;
-const m=mes.value;
-
-let filtrado=dados.filter(d=>
-(p==="TODOS"||d.PROCEDIMENTO===p)&&
-(c==="TODOS"||d.CLINICA===c)&&
-(t==="TODOS"||d.TURMA===t)&&
-(m==="TODOS"||d.DATA.includes(m))
-);
-
-let total=0;
-let faturamento=0;
-let mapa={};
-
-filtrado.forEach(d=>{
-let qtd=parseFloat(d.QUANTIDADE||0);
-let val=parseFloat(d["VALOR TOTAL"]?.replace("R$","").replace(",",".")||0);
-
-total+=qtd;
-faturamento+=val;
-
-mapa[d.PROCEDIMENTO]=(mapa[d.PROCEDIMENTO]||0)+val;
-});
-
-// KPIs
-totalEl.innerText=total;
-faturamentoEl.innerText="R$ "+faturamento.toLocaleString("pt-BR");
-eficienciaEl.innerText=filtrado.length ? Math.round(total/(filtrado.length*40)*100)+"%" : "0%";
-
-// RANKING
-let ranking=Object.entries(mapa).sort((a,b)=>b[1]-a[1]);
-
-rankingEl.innerHTML="";
-ranking.slice(0,5).forEach(r=>{
-rankingEl.innerHTML+=`<li>${r[0]} - R$ ${r[1].toLocaleString("pt-BR")}</li>`;
-});
-
-// CHART
-if(chart) chart.destroy();
-
-chart=new Chart(grafico,{
-type:'bar',
-data:{
-labels:Object.keys(mapa),
-datasets:[{data:Object.values(mapa)}]
-}
-});
-}
-
-// START
+// INICIAR
 fetchData();
 </script>
 
