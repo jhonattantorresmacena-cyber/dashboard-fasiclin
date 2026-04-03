@@ -121,7 +121,8 @@
     // CONFIGURAÇÃO DOS DADOS
     const SHEET_ID = '1M2TGuEkzyOXgcxGK9ujYDknIgjvWlveHHsSpqnvv5j4';
     const GID = '1575732509';
-    // ALTERAÇÃO SUGERIDA: Novo formato de link para maior compatibilidade com GitHub Pages
+    
+    // URL formatada corretamente para exportação CSV pública
     const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=${GID}&output=csv`;
 
     let rawData = [];
@@ -132,7 +133,9 @@
     const F_GRAY = '#a395a8';
 
     window.onload = function() {
-        Chart.register(ChartDataLabels);
+        if (typeof ChartDataLabels !== 'undefined') {
+            Chart.register(ChartDataLabels);
+        }
         fetchDataFromSheets();
     };
 
@@ -140,42 +143,46 @@
         if (!d) return null;
         if (d instanceof Date) return d;
         if (typeof d === 'string') {
-            if (d.includes('/')) {
-                let parts = d.split(' ')[0].split('/');
-                if (parts.length === 3) {
-                    return new Date(parts[2], parts[1] - 1, parts[0]);
-                }
+            let parts = d.split(' ')[0].split('/');
+            if (parts.length === 3) {
+                return new Date(parts[2], parts[1] - 1, parts[0]);
             }
         }
         const fallback = new Date(d);
         return isNaN(fallback) ? null : fallback;
     }
 
-   async function fetchDataFromSheets() {
-        document.getElementById('loadingOverlay').style.display = 'flex';
+    async function fetchDataFromSheets() {
+        const loading = document.getElementById('loadingOverlay');
+        loading.style.display = 'flex';
+        
         try {
-            // USANDO O FORMATO /PUB QUE É O MAIS ESTÁVEL
-            const URL_FINAL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=${GID}&output=csv`;
-            
-            const response = await fetch(URL_FINAL);
-            
-            if (!response.ok) throw new Error("Status: " + response.status);
+            // Adicionamos um timestamp para evitar que o navegador use uma versão antiga (cache)
+            const cacheBuster = `&cache=${new Date().getTime()}`;
+            const response = await fetch(SHEET_CSV_URL + cacheBuster);
+
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
 
             const csvText = await response.text();
-            
+
+            // Validação crucial: Se o Google retornar HTML, a planilha NÃO está pública
             if (csvText.includes("<!DOCTYPE") || csvText.includes("login")) {
-                throw new Error("O Google retornou uma página de login. A planilha NÃO está pública.");
+                throw new Error("Acesso negado. A planilha não está 'Publicada na Web' como CSV.");
             }
 
-            const workbook = XLSX.read(csvText, {type: 'string', cellDates: true});
-            rawData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-            
+            // Converte CSV para JSON usando a biblioteca XLSX
+            const workbook = XLSX.read(csvText, {type: 'string'});
+            const sheetName = workbook.SheetNames[0];
+            rawData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+            if (!rawData || rawData.length === 0) throw new Error("A planilha parece estar vazia.");
+
             initDashboard();
         } catch (error) {
-            console.error("Erro:", error);
-            alert("⚠️ Erro ao conectar: " + error.message + "\n\n1. Verifique se a planilha está publicada como CSV.\n2. Tente usar o 4G do celular.");
+            console.error("Erro detalhado:", error);
+            alert(`⚠️ Erro ao conectar: ${error.message}\n\nVerifique:\n1. Arquivo > Compartilhar > Publicar na Web.\n2. Escolha 'Valores separados por vírgula (.csv)'.`);
         } finally {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            loading.style.display = 'none';
         }
     }
 
@@ -185,15 +192,30 @@
         filterData();
     }
 
+    // --- Mantenha suas funções de auxílio abaixo (getVal, cleanNum, etc) ---
+
+    function getVal(row, label) {
+        const key = Object.keys(row).find(k => k.toUpperCase().trim() === label.toUpperCase().trim());
+        return row[key] || "";
+    }
+
+    function cleanNum(val) {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        // Remove R$, pontos de milhar e troca vírgula por ponto
+        let cleaned = val.toString().replace(/[R$\s.]/g, '').replace(',', '.');
+        return parseFloat(cleaned) || 0;
+    }
+
     function populateMonthButtons() {
         const container = document.getElementById('monthBtns');
         container.innerHTML = '<button class="btn-month active" onclick="setMonth(\'TODOS\', this)">Todos os Meses</button>';
+        
         const months = [...new Set(rawData.map(row => {
-            const d = getVal(row, 'DATA');
-            const date = parseDate(d);
+            const date = parseDate(getVal(row, 'DATA'));
             return date ? date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : null;
         }))].filter(Boolean);
-        
+
         months.forEach(m => {
             container.innerHTML += `<button class="btn-month" onclick="setMonth('${m}', this)">${m}</button>`;
         });
@@ -206,36 +228,30 @@
         filterData();
     }
 
-    function getVal(row, label) {
-        const key = Object.keys(row).find(k => k.toUpperCase().includes(label.toUpperCase()));
-        return row[key];
-    }
-
-    function cleanNum(val) {
-        if (!val) return 0;
-        if (typeof val === 'number') return val;
-        return parseFloat(val.toString().replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-    }
-
-    function filterData() {
-        const selProc = document.getElementById('procSelect').value;
-        
-        filteredData = rawData.filter(row => {
-            const d = getVal(row, 'DATA');
-            const date = parseDate(d);
-            const dateStr = date ? date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : '';
-            const matchMonth = selectedMonth === 'TODOS' || dateStr === selectedMonth;
-            const matchProc = selProc === 'TODOS' || (getVal(row, 'PROCEDIMENTO') || '').toString().trim() === selProc;
-            return matchMonth && matchProc;
-        });
-        updateDashboard(filteredData);
-    }
-
     function populateDropdown() {
         const select = document.getElementById('procSelect');
         const procs = [...new Set(rawData.map(item => (getVal(item, 'PROCEDIMENTO') || "N/A").toString().trim()))].sort();
         select.innerHTML = '<option value="TODOS">-- Todos os Procedimentos --</option>';
-        procs.forEach(p => select.innerHTML += `<option value="${p}">${p}</option>`);
+        procs.forEach(p => {
+            if(p) select.innerHTML += `<option value="${p}">${p}</option>`;
+        });
+    }
+
+    function filterData() {
+        const selProc = document.getElementById('procSelect').value;
+
+        filteredData = rawData.filter(row => {
+            const d = getVal(row, 'DATA');
+            const date = parseDate(d);
+            const dateStr = date ? date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : '';
+            
+            const matchMonth = selectedMonth === 'TODOS' || dateStr === selectedMonth;
+            const currentProc = (getVal(row, 'PROCEDIMENTO') || '').toString().trim();
+            const matchProc = selProc === 'TODOS' || currentProc === selProc;
+            
+            return matchMonth && matchProc;
+        });
+        updateDashboard(filteredData);
     }
 
     function updateDashboard(data) {
@@ -244,7 +260,7 @@
 
         data.forEach(row => {
             const q = cleanNum(getVal(row, 'QUANTIDADE'));
-            const v = cleanNum(getVal(row, 'VALOR')); // Busca simplificada por 'VALOR'
+            const v = cleanNum(getVal(row, 'VALOR')); 
             const proc = (getVal(row, 'PROCEDIMENTO') || 'OUTROS').toString().trim();
             const tur = (getVal(row, 'TURMA') || 'N/A').toString().trim();
             const cli = (getVal(row, 'CLINICA') || 'N/A').toString().trim();
@@ -268,13 +284,13 @@
         document.getElementById('totalFinan').innerText = tFinan.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
         const dias = Object.keys(mMap).length;
         document.getElementById('avgMeta').innerText = dias > 0 ? Math.round((tQtd/(dias*40))*100)+"%" : "0%";
-        
+
         renderCharts(pMap, pCountMap, mMap, tMap, cMap);
     }
 
     function renderCharts(pMap, pCountMap, mMap, tMap, cMap) {
         Object.values(myCharts).forEach(c => c.destroy());
-        
+
         const dates = Object.keys(mMap).sort((a,b) => {
             const da = a.split('/').reverse().join('-');
             const db = b.split('/').reverse().join('-');
@@ -336,17 +352,17 @@
     async function exportToPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
-        
+
         doc.setFontSize(18);
         doc.setTextColor(41, 153, 71);
         doc.text('FASICLIN - Relatório de Desempenho', 14, 20);
-        
+
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(`Filtro Aplicado: ${selectedMonth} | Procedimento: ${document.getElementById('procSelect').value}`, 14, 28);
 
         const exportData = filteredData.length > 0 ? filteredData.slice(0, 100) : rawData.slice(0, 100);
-        
+
         const tableData = exportData.map(row => {
             const dateObj = parseDate(getVal(row, 'DATA'));
             const dateStr = dateObj ? dateObj.toLocaleDateString('pt-BR') : '---';
