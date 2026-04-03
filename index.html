@@ -1,389 +1,265 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FASICLIN - Gestão Premium</title>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    
-    <style>
-        :root { 
-            --fasiclin-green: #299947;
-            --fasiclin-gray: #a395a8;
-            --primary-text: #333333;
-            --bg-color: #f0f2f5; 
-            --card-bg: #ffffff; 
-            --shadow: 0 4px 15px rgba(0,0,0,0.08);
-            --transition: all 0.3s ease;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FASICLIN - Gestão Premium</title>
 
-        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; color: var(--primary-text); }
-        
-        header { 
-            background: var(--card-bg);
-            padding: 8px 5%; 
-            display: flex;
-            justify-content: space-between; 
-            align-items: center; 
-            border-bottom: 2px solid #e1e4e8;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-        
-        .header-logo img { height: auto; max-height: 55px; width: auto; display: block; }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
-        .btn-group { display: flex; gap: 10px; }
-        .btn { padding: 8px 18px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 13px; border: 1px solid transparent; transition: var(--transition); text-decoration: none; display: flex; align-items: center; gap: 6px; }
-        
-        .btn-export { background-color: var(--fasiclin-green); color: white; border: none; }
-        .btn-export:hover { background-color: #217a39; }
-
-        .container { padding: 30px 5%; max-width: 1600px; margin: auto; }
-        
-        .filter-section { background: var(--card-bg); padding: 20px 25px; border-radius: 20px; margin-bottom: 30px; box-shadow: var(--shadow); border: 1px solid #eaeaea; }
-        .filter-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-        .month-filters { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid #eee; padding-top: 15px; }
-        
-        .btn-month { padding: 6px 15px; border-radius: 15px; border: 1px solid #ddd; background: white; font-size: 12px; cursor: pointer; transition: var(--transition); }
-        .btn-month.active { background: var(--fasiclin-green); color: white; border-color: var(--fasiclin-green); }
-
-        select { flex-grow: 1; padding: 10px 15px; border: 1px solid #ddd; border-radius: 25px; font-size: 15px; outline: none; background: white; }
-
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 30px; }
-        .card-stat { background: var(--card-bg); padding: 30px; border-radius: 15px; text-align: center; box-shadow: var(--shadow); border: 1px solid #eaeaea;}
-        .card-stat h3 { margin: 0; font-size: 14px; color: var(--fasiclin-gray); text-transform: uppercase; letter-spacing: 1px;}
-        .card-stat p { font-size: 36px; font-weight: 600; color: var(--fasiclin-green); margin: 15px 0 0; }
-
-        .main-chart-card { background: var(--card-bg); padding: 25px; border-radius: 15px; box-shadow: var(--shadow); margin-bottom: 30px; border: 1px solid #eaeaea;}
-        .mid-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; margin-bottom: 30px; }
-        .card-chart { background: var(--card-bg); padding: 25px; border-radius: 15px; box-shadow: var(--shadow); border: 1px solid #eaeaea; }
-
-        h2 { font-size: 15px; color: var(--primary-text); margin-bottom: 25px; display: flex; align-items: center; gap: 8px; }
-        h2::before { content:''; width: 6px; height: 18px; background: var(--fasiclin-green); border-radius: 3px;}
-
-        #loadingOverlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
-        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid var(--fasiclin-green); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+<style>
+body { font-family: Arial; background:#f0f2f5; margin:0 }
+.container { padding:20px }
+.card { background:#fff; padding:20px; margin-bottom:20px; border-radius:10px }
+</style>
 </head>
+
 <body>
 
-<div id="loadingOverlay"><div class="spinner"></div><p>Sincronizando com Google Sheets...</p></div>
-
-<header>
-    <div class="header-logo"><img src="image_1.png" alt="Logo FASICLIN"></div>
-    <div class="btn-group">
-        <button id="btnPDF" onclick="exportToPDF()" class="btn btn-export">📄 Exportar Relatório PDF</button>
-    </div>
-</header>
-
 <div class="container">
-    <div class="filter-section">
-        <div class="filter-row">
-            <strong>🎯 Procedimento:</strong>
-            <select id="procSelect" onchange="filterData()"><option value="TODOS">-- Todos os Procedimentos --</option></select>
-        </div>
-        <div class="month-filters" id="monthBtns">
-            <button class="btn-month active" onclick="setMonth('TODOS', this)">Todos os Meses</button>
-        </div>
-    </div>
+<h2>Dashboard FASICLIN</h2>
 
-    <div class="stats-grid">
-        <div class="card-stat"><h3>Total Atendimentos</h3><p id="totalQtd">0</p></div>
-        <div class="card-stat"><h3>Faturamento Bruto</h3><p id="totalFinan">R$ 0,00</p></div>
-        <div class="card-stat"><h3>Eficiência Média</h3><p id="avgMeta">0%</p></div>
-    </div>
+<select id="procSelect" onchange="filterData()"></select>
 
-    <div class="main-chart-card">
-        <h2>Tendência de Atingimento de Meta Diária</h2>
-        <div style="height: 380px;"><canvas id="chartMeta"></canvas></div>
-    </div>
+<div>
+<button onclick="setMonth('TODOS')">Todos</button>
+<div id="monthBtns"></div>
+</div>
 
-    <div class="mid-grid">
-        <div class="card-chart"><h2>Produção por Turma</h2><div style="height: 320px;"><canvas id="chartTurma"></canvas></div></div>
-        <div class="card-chart"><h2>Distribuição por Clínica</h2><div style="height: 320px;"><canvas id="chartClinica"></canvas></div></div>
-    </div>
+<div class="card">
+<h3>Total Atendimentos</h3>
+<p id="totalQtd">0</p>
+</div>
 
-    <div class="card-chart">
-        <h2>Ranking de Receita por Procedimento</h2>
-        <div style="height: 550px;"><canvas id="chartProcedimento"></canvas></div>
-    </div>
+<div class="card">
+<h3>Faturamento</h3>
+<p id="totalFinan">R$ 0</p>
+</div>
+
+<div class="card">
+<h3>Eficiência</h3>
+<p id="avgMeta">0%</p>
+</div>
+
+<canvas id="chartMeta"></canvas>
+<canvas id="chartProcedimento"></canvas>
+
+<button onclick="exportToPDF()">Exportar PDF</button>
 </div>
 
 <script>
-    // CONFIGURAÇÃO DOS DADOS
-  // 1. Use o link exato que o Google te deu (entre aspas)
-const SHEET_CSV_URL = "const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14YIz2IkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHCBI1vIuwU_2XOidkNswPkO8tum1kmScpspHc5A/pub?output=csv";";
-async function fetchDataFromSheets() {
-    const loading = document.getElementById('loadingOverlay');
-    loading.style.display = 'flex';
-    
-    try {
-        const response = await fetch(SHEET_CSV_URL);
-        if (!response.ok) throw new Error(`Status: ${response.status}`);
 
-        const csvText = await response.text();
-        
-        // Converte o CSV para JSON
-        const workbook = XLSX.read(csvText, {type: 'string'});
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // IMPORTANTE: Definimos rawData na janela global para você conseguir ver no console
-        window.rawData = XLSX.utils.sheet_to_json(worksheet);
+// 🔗 LINK CORRETO DA SUA PLANILHA
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/1M2TGuEkzyOXgcxGK9ujYDknIgjvWlveHHsSpqnvv5j4/export?format=csv&gid=1575732509";
 
-        console.log("Dados carregados com sucesso:", window.rawData);
+// 📌 CONFIG COLUNAS
+const COLUNAS = {
+    DATA: 'DATA',
+    PROCEDIMENTO: 'PROCEDIMENTO',
+    VALOR: 'VALOR TOTAL',
+    QUANTIDADE: 'QUANTIDADE',
+    TURMA: 'TURMA',
+    CLINICA: 'CLINICA'
+};
 
-        if (!window.rawData || window.rawData.length === 0) {
-            throw new Error("A planilha está vazia ou o formato é inválido.");
-        }
+const META_DIARIA = 40;
 
-        initDashboard();
-    } catch (error) {
-        console.error("Erro no Fetch:", error);
-        alert(`⚠️ Erro: ${error.message}`);
-    } finally {
-        loading.style.display = 'none';
-    }
-}
-
-// Função getVal melhorada para não errar por causa de espaços ou acentos
-function getVal(row, label) {
-    if (!row) return "";
-    // Procura a chave que MAIS SE PARECE com o que queremos
-    const target = label.toUpperCase().trim();
-    const key = Object.keys(row).find(k => k.toUpperCase().trim().includes(target));
-    return key ? row[key] : "";
-}
-
-    function populateMonthButtons() {
-        const container = document.getElementById('monthBtns');
-        container.innerHTML = '<button class="btn-month active" onclick="setMonth(\'TODOS\', this)">Todos os Meses</button>';
-        
-        const months = [...new Set(rawData.map(row => {
-            const date = parseDate(getVal(row, 'DATA'));
-            return date ? date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : null;
-        }))].filter(Boolean);
-
-        months.forEach(m => {
-            container.innerHTML += `<button class="btn-month" onclick="setMonth('${m}', this)">${m}</button>`;
-        });
-    }
-
-    function setMonth(m, btn) {
-        selectedMonth = m;
-        document.querySelectorAll('.btn-month').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        filterData();
-    }
-
-    function populateDropdown() {
-        const select = document.getElementById('procSelect');
-        const procs = [...new Set(rawData.map(item => (getVal(item, 'PROCEDIMENTO') || "N/A").toString().trim()))].sort();
-        select.innerHTML = '<option value="TODOS">-- Todos os Procedimentos --</option>';
-        procs.forEach(p => {
-            if(p) select.innerHTML += `<option value="${p}">${p}</option>`;
-        });
-    }
-
-    function filterData() {
-        const selProc = document.getElementById('procSelect').value;
-
-        filteredData = rawData.filter(row => {
-            const d = getVal(row, 'DATA');
-            const date = parseDate(d);
-            const dateStr = date ? date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' }) : '';
-            
-            const matchMonth = selectedMonth === 'TODOS' || dateStr === selectedMonth;
-            const currentProc = (getVal(row, 'PROCEDIMENTO') || '').toString().trim();
-            const matchProc = selProc === 'TODOS' || currentProc === selProc;
-            
-            return matchMonth && matchProc;
-        });
-        updateDashboard(filteredData);
-    }
-
-    function updateDashboard(data) {
-        let tQtd = 0, tFinan = 0;
-        let pMap = {}, tMap = {}, cMap = {}, mMap = {}, pCountMap = {};
-
-        data.forEach(row => {
-            // AJUSTE DE NOMES DE COLUNA (Baseado no seu print)
-            const q = cleanNum(getVal(row, 'QUANTIDADE'));
-            const v = cleanNum(getVal(row, 'VALOR TOTAL')); // Antes era apenas 'VALOR'
-            const proc = (getVal(row, 'PROCEDIMENTO') || 'OUTROS').toString().trim();
-            const tur = (getVal(row, 'TURMA') || 'N/A').toString().trim(); // Verifique se essa coluna existe
-            const cli = (getVal(row, 'CLINICA') || 'N/A').toString().trim();
-            const dt = getVal(row, 'DATA');
-
-            tQtd += q; 
-            tFinan += v;
-            
-            pMap[proc] = (pMap[proc] || 0) + v;
-            pCountMap[proc] = (pCountMap[proc] || 0) + q;
-            tMap[tur] = (tMap[tur] || 0) + q;
-            cMap[cli] = (cMap[cli] || 0) + q;
-
-            const dateObj = parseDate(dt);
-            if(dateObj) {
-                let dStr = dateObj.toLocaleDateString('pt-BR');
-                if(!mMap[dStr]) mMap[dStr] = { r: 0, m: 40 };
-                mMap[dStr].r += q;
-            }
-        });
-
-        // Atualiza os cards na tela
-        document.getElementById('totalQtd').innerText = tQtd.toLocaleString('pt-BR');
-        document.getElementById('totalFinan').innerText = tFinan.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
-        
-        const dias = Object.keys(mMap).length;
-        document.getElementById('avgMeta').innerText = dias > 0 ? Math.round((tQtd/(dias*40))*100)+"%" : "0%";
-
-        renderCharts(pMap, pCountMap, mMap, tMap, cMap);
-    }
-    function renderCharts(pMap, pCountMap, mMap, tMap, cMap) {
-        Object.values(myCharts).forEach(c => c.destroy());
-
-        const dates = Object.keys(mMap).sort((a,b) => {
-            const da = a.split('/').reverse().join('-');
-            const db = b.split('/').reverse().join('-');
-            return new Date(da) - new Date(db);
-        });
-
-        const cfg = { responsive: true, maintainAspectRatio: false, plugins: { datalabels: { display: false }, legend: { position: 'bottom' } } };
-
-        myCharts.meta = new Chart(document.getElementById('chartMeta'), {
-            type: 'line',
-            data: {
-                labels: dates,
-                datasets: [
-                    { label: 'Realizado', data: dates.map(d=>mMap[d].r), borderColor: F_GREEN, backgroundColor: 'rgba(41,153,71,0.1)', fill: true, tension: 0.3 },
-                    { label: 'Meta', data: dates.map(d=>mMap[d].m), borderColor: '#ff4d4d', borderDash: [5,5], pointRadius: 0 }
-                ]
-            },
-            options: cfg
-        });
-
-        const sortedProcs = Object.keys(pMap).sort((a,b) => pMap[b] - pMap[a]).slice(0, 15);
-        myCharts.proc = new Chart(document.getElementById('chartProcedimento'), {
-            type: 'bar',
-            data: { 
-                labels: sortedProcs, 
-                datasets: [{ label: 'Receita (R$)', data: sortedProcs.map(k=>pMap[k]), backgroundColor: F_GREEN, borderRadius: 10 }] 
-            },
-            options: { 
-                ...cfg, 
-                indexAxis: 'y', 
-                plugins: { 
-                    legend: { display: false }, 
-                    datalabels: { 
-                        display: true, 
-                        anchor: 'end', 
-                        align: 'right', 
-                        formatter: (val, ctx) => `Qtd: ${pCountMap[ctx.chart.data.labels[ctx.dataIndex]]}`, 
-                        color: F_GRAY, 
-                        font: { weight: '600', size: 11 } 
-                    } 
-                }, 
-                scales: { x: { grid: { display: false }, grace: '10%' } } 
-            }
-        });
-
-        myCharts.turma = new Chart(document.getElementById('chartTurma'), {
-            type: 'pie',
-            data: { labels: Object.keys(tMap), datasets: [{ data: Object.values(tMap), backgroundColor: ['#299947', '#a395a8', '#34d399', '#6366f1', '#f59e0b'] }] },
-            options: cfg
-        });
-
-        myCharts.clinica = new Chart(document.getElementById('chartClinica'), {
-            type: 'doughnut',
-            data: { labels: Object.keys(cMap), datasets: [{ data: Object.values(cMap), backgroundColor: ['#10b981', '#6b7280', '#fbbf24', '#ef4444'] }] },
-            options: { ...cfg, cutout: '70%' }
-        });
-    }
-
-    async function exportToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-
-        doc.setFontSize(18);
-        doc.setTextColor(41, 153, 71);
-        doc.text('FASICLIN - Relatório de Desempenho', 14, 20);
-
-        doc.setFontSize(10);
-        doc.setTextColor(100);
-        doc.text(`Filtro Aplicado: ${selectedMonth} | Procedimento: ${document.getElementById('procSelect').value}`, 14, 28);
-
-        const exportData = filteredData.length > 0 ? filteredData.slice(0, 100) : rawData.slice(0, 100);
-
-        const tableData = exportData.map(row => {
-            const dateObj = parseDate(getVal(row, 'DATA'));
-            const dateStr = dateObj ? dateObj.toLocaleDateString('pt-BR') : '---';
-            return [
-                dateStr,
-                getVal(row, 'PROCEDIMENTO') || 'N/A',
-                getVal(row, 'TURMA') || 'N/A',
-                cleanNum(getVal(row, 'VALOR')).toLocaleString('pt-BR', {style:'currency', currency:'BRL'})
-            ];
-        });
-
-        doc.autoTable({
-            startY: 35,
-            head: [['Data', 'Procedimento', 'Turma', 'Valor']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: { fillColor: [41, 153, 71] },
-            styles: { fontSize: 8 }
-        });
-
-        doc.save('Relatorio_Fasiclin_Premium.pdf');
-    }
-    // Variáveis Globais de Controle
 let rawData = [];
 let filteredData = [];
 let selectedMonth = 'TODOS';
 let myCharts = {};
-const F_GREEN = '#299947';
-const F_GRAY = '#a395a8';
 
-// Inicializa o Dashboard após carregar os dados
-function initDashboard() {
-    populateMonthButtons();
-    populateDropdown();
-    updateDashboard(window.rawData);
+// 🚀 FETCH
+async function fetchDataFromSheets() {
+    const res = await fetch(SHEET_CSV_URL);
+    const csv = await res.text();
+
+    const wb = XLSX.read(csv, {type:'string'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+
+    rawData = XLSX.utils.sheet_to_json(ws);
+
+    console.log("Dados:", rawData);
+    console.log("Colunas:", Object.keys(rawData[0]));
+
+    initDashboard();
 }
 
-// Função para limpar números (remove R$, pontos e converte vírgula em ponto)
+// 🔍 BUSCA VALOR
+function getVal(row, label) {
+    const target = label.toUpperCase().trim();
+
+    let key = Object.keys(row).find(k => k.toUpperCase().trim() === target);
+    if (!key) key = Object.keys(row).find(k => k.toUpperCase().includes(target));
+
+    return key ? row[key] : "";
+}
+
+// 🔢 LIMPA NÚMERO
 function cleanNum(val) {
     if (!val) return 0;
     if (typeof val === 'number') return val;
-    let n = val.toString().replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+
+    let n = val.toString()
+        .replace('R$', '')
+        .replace(/\./g,'')
+        .replace(',', '.');
+
     return parseFloat(n) || 0;
 }
 
-// Função para entender datas em formatos diferentes (03/04/2026 ou 2026-04-03)
-function parseDate(dateStr) {
-    if (!dateStr) return null;
-    if (dateStr instanceof Date) return dateStr;
-    const parts = dateStr.split('/');
-    if (parts.length === 3) {
-        return new Date(parts[2], parts[1] - 1, parts[0]);
+// 📅 DATA
+function parseDate(d) {
+    if (!d) return null;
+
+    if (d.includes('/')) {
+        const p = d.split('/');
+        return new Date(p[2], p[1]-1, p[0]);
     }
-    const d = new Date(dateStr);
-    return isNaN(d.getTime()) ? null : d;
+
+    return new Date(d);
 }
 
-// Inicia a busca assim que a página carregar
-window.onload = fetchDataFromSheets;
-    
-</script>
+// 🚀 INIT
+function initDashboard() {
+    populateDropdown();
+    populateMonthButtons();
+    updateDashboard(rawData);
+}
 
+// 📋 DROPDOWN
+function populateDropdown() {
+    const select = document.getElementById('procSelect');
+
+    const procs = [...new Set(rawData.map(r =>
+        getVal(r, COLUNAS.PROCEDIMENTO)
+    ))];
+
+    select.innerHTML = '<option value="TODOS">TODOS</option>';
+
+    procs.forEach(p => {
+        select.innerHTML += `<option>${p}</option>`;
+    });
+}
+
+// 📅 MESES
+function populateMonthButtons() {
+    const div = document.getElementById('monthBtns');
+
+    const months = [...new Set(rawData.map(r => {
+        const d = parseDate(getVal(r, COLUNAS.DATA));
+        return d ? d.toLocaleString('pt-BR',{month:'long',year:'numeric'}) : '';
+    }))];
+
+    months.forEach(m => {
+        div.innerHTML += `<button onclick="setMonth('${m}')">${m}</button>`;
+    });
+}
+
+function setMonth(m) {
+    selectedMonth = m;
+    filterData();
+}
+
+// 🔎 FILTRO
+function filterData() {
+    const proc = document.getElementById('procSelect').value;
+
+    filteredData = rawData.filter(r => {
+        const d = parseDate(getVal(r, COLUNAS.DATA));
+        const m = d ? d.toLocaleString('pt-BR',{month:'long',year:'numeric'}) : '';
+
+        return (selectedMonth === 'TODOS' || m === selectedMonth) &&
+               (proc === 'TODOS' || getVal(r, COLUNAS.PROCEDIMENTO) === proc);
+    });
+
+    updateDashboard(filteredData);
+}
+
+// 📊 DASHBOARD
+function updateDashboard(data) {
+    let totalQ = 0;
+    let totalV = 0;
+
+    let procMap = {};
+    let metaMap = {};
+
+    data.forEach(r => {
+        const q = cleanNum(getVal(r, COLUNAS.QUANTIDADE));
+        const v = cleanNum(getVal(r, COLUNAS.VALOR));
+        const proc = getVal(r, COLUNAS.PROCEDIMENTO);
+
+        totalQ += q;
+        totalV += v;
+
+        procMap[proc] = (procMap[proc] || 0) + v;
+
+        const d = parseDate(getVal(r, COLUNAS.DATA));
+        if (d) {
+            const key = d.toLocaleDateString('pt-BR');
+
+            if (!metaMap[key]) metaMap[key] = {r:0,m:META_DIARIA};
+            metaMap[key].r += q;
+        }
+    });
+
+    document.getElementById('totalQtd').innerText = totalQ;
+    document.getElementById('totalFinan').innerText =
+        totalV.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+    const dias = Object.keys(metaMap).length;
+    document.getElementById('avgMeta').innerText =
+        dias ? Math.round((totalQ/(dias*META_DIARIA))*100)+'%' : '0%';
+
+    renderCharts(procMap, metaMap);
+}
+
+// 📈 GRÁFICOS
+function renderCharts(procMap, metaMap) {
+
+    Object.values(myCharts).forEach(c => c?.destroy());
+
+    const datas = Object.keys(metaMap);
+
+    myCharts.meta = new Chart(document.getElementById('chartMeta'), {
+        type:'line',
+        data:{
+            labels: datas,
+            datasets:[
+                {label:'Realizado', data: datas.map(d=>metaMap[d].r)},
+                {label:'Meta', data: datas.map(d=>metaMap[d].m)}
+            ]
+        }
+    });
+
+    const labels = Object.keys(procMap);
+
+    myCharts.proc = new Chart(document.getElementById('chartProcedimento'), {
+        type:'bar',
+        data:{
+            labels,
+            datasets:[{label:'Receita', data: Object.values(procMap)}]
+        }
+    });
+}
+
+// 📄 PDF
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.text("Relatório FASICLIN", 10, 10);
+
+    doc.save("relatorio.pdf");
+}
+
+// 🚀 START
+window.onload = fetchDataFromSheets;
+
+</script>
 </body>
 </html>
