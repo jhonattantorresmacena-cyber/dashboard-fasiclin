@@ -2,218 +2,225 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>FASICLIN - Dashboard Avançado</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FASICLIN - Gestão Premium</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-body { font-family: Arial; background:#f0f2f5; margin:0; }
+:root { 
+--fasiclin-green: #299947;
+--fasiclin-gray: #a395a8;
+--bg-color: #f0f2f5;
+--card-bg: #fff;
+}
 
-.container { padding:20px; max-width:1400px; margin:auto; }
+body { font-family:'Poppins'; background:var(--bg-color); margin:0; }
 
-.card { background:#fff; padding:20px; border-radius:15px; margin-bottom:20px; box-shadow:0 4px 10px rgba(0,0,0,.05); }
+header {
+background:#fff;
+padding:10px 5%;
+display:flex;
+justify-content:space-between;
+box-shadow:0 2px 5px rgba(0,0,0,.05);
+}
 
-.filters { display:flex; gap:10px; flex-wrap:wrap; }
+.container { padding:25px 5%; max-width:1400px; margin:auto; }
 
-select { padding:10px; border-radius:10px; }
+.card {
+background:#fff;
+padding:20px;
+border-radius:15px;
+box-shadow:0 4px 15px rgba(0,0,0,0.08);
+margin-bottom:20px;
+}
 
 .stats { display:flex; gap:20px; }
+
 .stat { flex:1; text-align:center; }
 
-.stat h2 { color:#299947; }
+.stat p { font-size:30px; color:var(--fasiclin-green); }
 
-.grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+select {
+padding:10px;
+border-radius:20px;
+width:100%;
+}
 
-canvas { max-height:350px; }
+#loadingOverlay {
+display:none;
+position:fixed;
+top:0;left:0;width:100%;height:100%;
+background:#fff;
+align-items:center;
+justify-content:center;
+font-size:20px;
+}
 </style>
 </head>
 
 <body>
 
+<div id="loadingOverlay">Carregando dados...</div>
+
+<header>
+<h2>FASICLIN Dashboard</h2>
+</header>
+
 <div class="container">
 
-<div class="card filters">
-<select id="proc"></select>
-<select id="clinica"></select>
-<select id="turma"></select>
-<select id="mes"></select>
+<div class="card">
+<select id="procSelect"></select>
 </div>
 
 <div class="stats">
-<div class="card stat"><p>Total</p><h2 id="qtd">0</h2></div>
-<div class="card stat"><p>Faturamento</p><h2 id="valor">0</h2></div>
-<div class="card stat"><p>Eficiência</p><h2 id="meta">0%</h2></div>
+<div class="card stat">Qtd: <p id="qtd">0</p></div>
+<div class="card stat">R$: <p id="valor">0</p></div>
+<div class="card stat">%: <p id="meta">0%</p></div>
 </div>
 
 <div class="card">
-<canvas id="metaChart"></canvas>
-</div>
-
-<div class="grid">
-<div class="card"><canvas id="procChart"></canvas></div>
-<div class="card"><canvas id="turmaChart"></canvas></div>
-<div class="card"><canvas id="clinicaChart"></canvas></div>
+<canvas id="chart"></canvas>
 </div>
 
 </div>
 
 <script>
 
-// 🔗 SEU LINK (JÁ CORRETO)
+// 🔗 LINK CORRETO DO GOOGLE SHEETS
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14Ylz2lkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHC8I1vIuwU_2X0idkNswPkO8tum1kmScpspHo5A/pub?output=csv";
 
-let rawData=[];
-let charts={};
+// 🔢 VARIÁVEIS
+let rawData = [];
+let chart = null;
 
-window.onload = fetchData;
+// 📌 ELEMENTOS DOM
+let qtdEl = document.getElementById('qtd');
+let valorEl = document.getElementById('valor');
+let metaEl = document.getElementById('meta');
 
-async function fetchData(){
-const res = await fetch(SHEET_URL);
-const text = await res.text();
+// 🚀 INICIO
+window.onload = fetchDataFromSheets;
 
-const rows = text.split("\n").map(r=>r.split(","));
-const headers = rows[0];
+// 🔥 BUSCA DADOS
+async function fetchDataFromSheets(){
 
-rawData = rows.slice(1).map(r=>{
-let obj={};
-headers.forEach((h,i)=>obj[h.trim()]=r[i]);
-return obj;
+document.getElementById('loadingOverlay').style.display='flex';
+
+try{
+
+const response = await fetch(SHEET_URL);
+const csv = await response.text();
+
+const workbook = XLSX.read(csv, {type:'string'});
+const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+rawData = XLSX.utils.sheet_to_json(sheet);
+
+console.log("Dados carregados:", rawData);
+
+if(!rawData.length) throw "Planilha vazia";
+
+populate();
+update(rawData);
+
+}catch(e){
+console.error(e);
+alert("Erro ao carregar planilha");
+}
+
+document.getElementById('loadingOverlay').style.display='none';
+}
+
+// 📌 DROPDOWN
+function populate(){
+
+let select = document.getElementById('procSelect');
+
+let procs = [...new Set(rawData.map(r => getVal(r,'PROCEDIMENTO')))].sort();
+
+select.innerHTML='<option value="TODOS">Todos</option>';
+
+procs.forEach(p=>{
+if(p) select.innerHTML+=`<option>${p}</option>`;
 });
 
-init();
-}
-
-// 🎯 INIT
-function init(){
-fillSelect("proc","PROCEDIMENTO");
-fillSelect("clinica","CLINICA");
-fillSelect("turma","TURMA");
-fillMonths();
-
-update();
-}
-
-// 🔽 SELECTS
-function fillSelect(id,col){
-let values=[...new Set(rawData.map(r=>r[col]))];
-let el=document.getElementById(id);
-
-el.innerHTML='<option value="TODOS">Todos</option>';
-values.forEach(v=>{ if(v) el.innerHTML+=`<option>${v}</option>` });
-
-el.onchange=update;
-}
-
-function fillMonths(){
-let meses=[...new Set(rawData.map(r=>{
-let d=parseDate(r.DATA);
-return d?d.toLocaleString('pt-BR',{month:'short',year:'numeric'}):null;
-}))].filter(Boolean);
-
-let el=document.getElementById("mes");
-el.innerHTML='<option value="TODOS">Todos</option>';
-
-meses.forEach(m=>el.innerHTML+=`<option>${m}</option>`);
-
-el.onchange=update;
+select.onchange = filterData;
 }
 
 // 🔍 FILTRO
-function getFiltered(){
-let p=document.getElementById("proc").value;
-let c=document.getElementById("clinica").value;
-let t=document.getElementById("turma").value;
-let m=document.getElementById("mes").value;
+function filterData(){
 
-return rawData.filter(r=>{
-let d=parseDate(r.DATA);
-let mes=d?d.toLocaleString('pt-BR',{month:'short',year:'numeric'}):"";
+let p = document.getElementById('procSelect').value;
 
-return (p==="TODOS"||r.PROCEDIMENTO===p) &&
-(c==="TODOS"||r.CLINICA===c) &&
-(t==="TODOS"||r.TURMA===t) &&
-(m==="TODOS"||mes===m);
+let data = rawData.filter(r=>{
+return p==="TODOS" || getVal(r,'PROCEDIMENTO')===p;
 });
+
+update(data);
 }
 
-// 📊 UPDATE
-function update(){
+// 📊 ATUALIZA DASHBOARD
+function update(data){
 
-let data=getFiltered();
-
-let qtd=0,val=0;
-let procMap={}, turmaMap={}, clinicaMap={}, metaMap={};
+let qtd=0;
+let val=0;
+let map={};
 
 data.forEach(r=>{
-let q=num(r.QUANTIDADE);
-let v=num(r["VALOR TOTAL"]);
 
-qtd+=q;
-val+=v;
+let q = cleanNum(getVal(r,'QUANTIDADE'));
+let v = cleanNum(getVal(r,'VALOR TOTAL'));
 
-procMap[r.PROCEDIMENTO]=(procMap[r.PROCEDIMENTO]||0)+v;
-turmaMap[r.TURMA]=(turmaMap[r.TURMA]||0)+q;
-clinicaMap[r.CLINICA]=(clinicaMap[r.CLINICA]||0)+q;
+qtd += q;
+val += v;
 
-let d=parseDate(r.DATA);
-if(d){
-let ds=d.toLocaleDateString();
-if(!metaMap[ds]) metaMap[ds]={r:0,m:40};
-metaMap[ds].r+=q;
-}
+let proc = getVal(r,'PROCEDIMENTO') || 'OUTROS';
+map[proc] = (map[proc] || 0) + v;
 });
 
 // CARDS
-qtdEl.innerText=qtd;
-valorEl.innerText=val.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-metaEl.innerText=data.length?Math.round(qtd/(data.length*40)*100)+'%':'0%';
+qtdEl.innerText = qtd.toLocaleString('pt-BR');
+valorEl.innerText = val.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+metaEl.innerText = data.length ? Math.round((qtd/(data.length*40))*100)+'%' : '0%';
 
-// CHARTS
-render(metaMap,procMap,turmaMap,clinicaMap);
-}
+// GRÁFICO
+let labels = Object.keys(map);
+let values = Object.values(map);
 
-// 📈 CHARTS
-function render(metaMap,procMap,turmaMap,clinicaMap){
+if(chart) chart.destroy();
 
-Object.values(charts).forEach(c=>c.destroy());
-
-charts.meta=new Chart(metaChart,{
-type:'line',
-data:{
-labels:Object.keys(metaMap),
-datasets:[
-{label:'Real',data:Object.values(metaMap).map(x=>x.r),borderColor:'green'},
-{label:'Meta',data:Object.values(metaMap).map(x=>x.m),borderColor:'red'}
-]
-}
-});
-
-charts.proc=new Chart(procChart,{
+chart = new Chart(document.getElementById('chart'),{
 type:'bar',
-data:{labels:Object.keys(procMap),datasets:[{data:Object.values(procMap),backgroundColor:'#299947'}]}
-});
-
-charts.turma=new Chart(turmaChart,{
-type:'pie',
-data:{labels:Object.keys(turmaMap),datasets:[{data:Object.values(turmaMap)}]}
-});
-
-charts.clinica=new Chart(clinicaChart,{
-type:'doughnut',
-data:{labels:Object.keys(clinicaMap),datasets:[{data:Object.values(clinicaMap)}]}
+data:{
+labels:labels,
+datasets:[{
+label:'Faturamento',
+data:values,
+backgroundColor:'#299947',
+borderRadius:8
+}]
+},
+options:{
+responsive:true,
+plugins:{legend:{display:false}}
+}
 });
 }
 
-// 🧠 HELPERS
-function num(v){
-if(!v) return 0;
-return parseFloat(v.replace(/[R$\s.]/g,'').replace(',','.'))||0;
+// 🧠 AUXILIARES
+function getVal(row,label){
+const key = Object.keys(row).find(k =>
+k.toUpperCase().replace(/\s/g,'').includes(label.replace(/\s/g,'')));
+return key ? row[key] : "";
 }
 
-function parseDate(d){
-if(!d) return null;
-let p=d.split('/');
-return p.length===3?new Date(p[2],p[1]-1,p[0]):new Date(d);
+function cleanNum(val){
+if(!val) return 0;
+return parseFloat(val.toString().replace(/[R$\s.]/g,'').replace(',','.')) || 0;
 }
 
 </script>
