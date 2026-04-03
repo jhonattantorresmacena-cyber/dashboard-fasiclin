@@ -2,21 +2,37 @@
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>FASICLIN PRO</title>
+<title>FASICLIN Dashboard PRO</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-body{font-family:Poppins;background:#f4f6f9;margin:0}
-.container{padding:20px}
-.card{background:#fff;padding:20px;border-radius:15px;margin-bottom:20px;box-shadow:0 3px 10px rgba(0,0,0,.08)}
-.filters{display:flex;gap:10px;flex-wrap:wrap}
-select{padding:10px;border-radius:10px}
-.stats{display:flex;gap:20px}
-.stat{flex:1;text-align:center;font-weight: 500;}
-.stat p{font-size:28px;color:#299947}
-canvas{max-height:350px}
+body { font-family: Arial; background:#f5f6fa; margin:0; }
+
+.container { padding:20px; }
+
+.filtros { display:flex; gap:10px; margin-bottom:20px; }
+
+select {
+padding:8px;
+border-radius:8px;
+border:1px solid #ccc;
+}
+
+.cards { display:flex; gap:20px; }
+
+.card {
+flex:1;
+background:#fff;
+padding:20px;
+border-radius:10px;
+text-align:center;
+box-shadow:0 2px 10px rgba(0,0,0,.1);
+}
+
+.valor { color:green; font-size:28px; }
+
+canvas { margin-top:20px; }
 </style>
 </head>
 
@@ -24,178 +40,166 @@ canvas{max-height:350px}
 
 <div class="container">
 
-<div class="card filters">
-<select id="proc"></select>
+<!-- FILTROS -->
+<div class="filtros">
+<select id="procedimento"></select>
 <select id="clinica"></select>
 <select id="turma"></select>
 <select id="mes"></select>
 </div>
 
-<div class="stats">
-<div class="card stat">Total<p id="qtd">0</p></div>
-<div class="card stat">Faturamento<p id="valor">0</p></div>
-<div class="card stat">Eficiência<p id="meta">0%</p></div>
+<!-- CARDS -->
+<div class="cards">
+<div class="card">
+Total
+<div id="total" class="valor">0</div>
 </div>
 
-<div class="card"><canvas id="linha"></canvas></div>
-<div class="card"><canvas id="barra"></canvas></div>
-<div class="card"><canvas id="pizza"></canvas></div>
+<div class="card">
+Faturamento
+<div id="faturamento" class="valor">0</div>
+</div>
+
+<div class="card">
+Eficiência
+<div id="eficiencia" class="valor">0%</div>
+</div>
+</div>
+
+<canvas id="grafico"></canvas>
 
 </div>
 
 <script>
-
 const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14Ylz2lkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHC8I1vIuwU_2X0idkNswPkO8tum1kmScpspHo5A/pub?output=csv";
 
-let data = [];
-let chart = null;
+let dados = [];
+let chart;
 
-// 🔥 INICIO SEGURO
-window.onload = () => {
-    try {
-        fetchData();
-    } catch (e) {
-        console.error("Erro geral:", e);
-        alert("Erro ao iniciar dashboard");
-    }
-};
+// 🔥 CARREGAR DADOS
+async function fetchData() {
+try {
+const res = await fetch(URL);
+const csv = await res.text();
 
-// 🔥 FETCH ROBUSTO
-async function fetchData(){
+const linhas = csv.split("\n").map(l => l.split(","));
+const headers = linhas[0];
 
-    try{
-        const res = await fetch(URL);
+dados = linhas.slice(1).map(l => {
+let obj = {};
+headers.forEach((h,i)=> obj[h.trim()] = l[i]);
+return obj;
+});
 
-        if(!res.ok){
-            throw new Error("Erro HTTP: " + res.status);
-        }
+console.log("Dados OK:", dados);
 
-        const csv = await res.text();
+init();
 
-        const wb = XLSX.read(csv,{type:'string'});
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-
-        data = XLSX.utils.sheet_to_json(sheet);
-
-        if(!data || data.length === 0){
-            throw new Error("Planilha vazia");
-        }
-
-        console.log("Dados OK:", data);
-
-        init();
-
-    }catch(e){
-        console.error("Erro ao carregar:", e);
-        alert("Erro ao carregar dados da planilha");
-    }
+} catch(e){
+alert("Erro ao carregar dados");
+console.error(e);
+}
 }
 
-// 🔧 INIT
+// 🔥 INICIALIZA
 function init(){
-    populate();
-    update(data);
+popularFiltros();
+atualizar();
 }
 
-// 📌 DROPDOWN
-function populate(){
-    const select = document.getElementById('procSelect');
+// 🔥 POPULAR FILTROS (CORRIGIDO)
+function popularFiltros(){
 
-    const procs = [...new Set(data.map(r => getVal(r,'PROCEDIMENTO')))].sort();
+const proc = document.getElementById("procedimento");
+const clin = document.getElementById("clinica");
+const turma = document.getElementById("turma");
+const mes = document.getElementById("mes");
 
-    select.innerHTML = '<option value="TODOS">Todos</option>';
-
-    procs.forEach(p=>{
-        if(p){
-            select.innerHTML += `<option>${p}</option>`;
-        }
-    });
-
-    select.onchange = filterData;
+if(!proc || !clin || !turma || !mes){
+console.error("ERRO: Select não encontrado");
+return;
 }
 
-// 🔍 FILTRO
-function filterData(){
-    const p = document.getElementById('procSelect').value;
+proc.innerHTML = '<option value="TODOS">Todos</option>';
+clin.innerHTML = '<option value="TODOS">Todos</option>';
+turma.innerHTML = '<option value="TODOS">Todos</option>';
+mes.innerHTML = '<option value="TODOS">Todos</option>';
 
-    const filtered = data.filter(r=>{
-        return p === "TODOS" || getVal(r,'PROCEDIMENTO') === p;
-    });
+[...new Set(dados.map(d=>d.PROCEDIMENTO))].forEach(v=>{
+if(v) proc.innerHTML += `<option>${v}</option>`;
+});
 
-    update(filtered);
+[...new Set(dados.map(d=>d.CLINICA))].forEach(v=>{
+if(v) clin.innerHTML += `<option>${v}</option>`;
+});
+
+[...new Set(dados.map(d=>d.TURMA))].forEach(v=>{
+if(v) turma.innerHTML += `<option>${v}</option>`;
+});
+
+[...new Set(dados.map(d=> d.DATA?.substring(3,10)))].forEach(v=>{
+if(v) mes.innerHTML += `<option>${v}</option>`;
+});
+
+// EVENTOS
+proc.onchange = atualizar;
+clin.onchange = atualizar;
+turma.onchange = atualizar;
+mes.onchange = atualizar;
 }
 
-// 📊 DASHBOARD
-function update(d){
+// 🔥 ATUALIZA DASHBOARD
+function atualizar(){
 
-    let qtd = 0;
-    let val = 0;
-    let map = {};
+const p = document.getElementById("procedimento").value;
+const c = document.getElementById("clinica").value;
+const t = document.getElementById("turma").value;
+const m = document.getElementById("mes").value;
 
-    d.forEach(r=>{
-        const q = cleanNum(getVal(r,'QUANTIDADE'));
-        const v = cleanNum(getVal(r,'VALOR TOTAL'));
+let filtrado = dados.filter(d=>{
+return (p==="TODOS" || d.PROCEDIMENTO===p) &&
+(c==="TODOS" || d.CLINICA===c) &&
+(t==="TODOS" || d.TURMA===t) &&
+(m==="TODOS" || d.DATA.includes(m));
+});
 
-        qtd += q;
-        val += v;
+let total = 0;
+let faturamento = 0;
+let mapa = {};
 
-        const proc = getVal(r,'PROCEDIMENTO') || "OUTROS";
-        map[proc] = (map[proc] || 0) + v;
-    });
+filtrado.forEach(d=>{
+let qtd = parseFloat(d.QUANTIDADE || 0);
+let val = parseFloat(d["VALOR TOTAL"]?.replace("R$","").replace(",",".") || 0);
 
-    // DOM seguro
-    document.getElementById('qtd').innerText = qtd.toLocaleString('pt-BR');
-    document.getElementById('valor').innerText = val.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-    document.getElementById('meta').innerText = d.length ? Math.round((qtd/(d.length*40))*100)+'%' : '0%';
+total += qtd;
+faturamento += val;
 
-    renderChart(map);
+mapa[d.PROCEDIMENTO] = (mapa[d.PROCEDIMENTO] || 0) + val;
+});
+
+// CARDS
+document.getElementById("total").innerText = total;
+document.getElementById("faturamento").innerText = faturamento.toLocaleString("pt-BR");
+
+document.getElementById("eficiencia").innerText =
+filtrado.length ? Math.round(total/(filtrado.length*40)*100)+"%" : "0%";
+
+// GRÁFICO
+if(chart) chart.destroy();
+
+chart = new Chart(document.getElementById("grafico"), {
+type: "bar",
+data: {
+labels: Object.keys(mapa),
+datasets: [{
+data: Object.values(mapa)
+}]
+}
+});
 }
 
-// 📊 GRÁFICO
-function renderChart(map){
-
-    const labels = Object.keys(map);
-    const values = Object.values(map);
-
-    if(chart) chart.destroy();
-
-    chart = new Chart(document.getElementById('chart'),{
-        type:'bar',
-        data:{
-            labels: labels,
-            datasets:[{
-                label:'Faturamento',
-                data: values,
-                backgroundColor:'#299947'
-            }]
-        },
-        options:{
-            responsive:true,
-            plugins:{
-                legend:{display:false}
-            }
-        }
-    });
-}
-
-// 🧠 AUX
-function getVal(row,label){
-    const key = Object.keys(row).find(k =>
-        k.toUpperCase().replace(/\s/g,'')
-        .includes(label.replace(/\s/g,'')));
-
-    return key ? row[key] : "";
-}
-
-function cleanNum(val){
-    if(!val) return 0;
-    return parseFloat(
-        val.toString()
-        .replace(/[R$\s.]/g,'')
-        .replace(',','.')
-    ) || 0;
-}
-
+// START
+fetchData();
 </script>
 
 </body>
