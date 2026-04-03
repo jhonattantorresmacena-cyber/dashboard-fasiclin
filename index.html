@@ -121,9 +121,7 @@
     // CONFIGURAÇÃO DOS DADOS
     const SHEET_ID = '1M2TGuEkzyOXgcxGK9ujYDknIgjvWlveHHsSpqnvv5j4';
     const GID = '1575732509';
-    
-    // URL formatada corretamente para exportação CSV pública
-    const SHEET_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?gid=${GID}&output=csv`;
+    const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14YIz2IkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHCBI1vIuwU_2XOidkNswPkO8tum1kmScpspHc5A/pub?output=csv";
 
     let rawData = [];
     let filteredData = []; 
@@ -164,13 +162,9 @@
             if (!response.ok) throw new Error(`Status: ${response.status}`);
 
             const csvText = await response.text();
-
-            // Validação crucial: Se o Google retornar HTML, a planilha NÃO está pública
             if (csvText.includes("<!DOCTYPE") || csvText.includes("login")) {
                 throw new Error("Acesso negado. A planilha não está 'Publicada na Web' como CSV.");
             }
-
-            // Converte CSV para JSON usando a biblioteca XLSX
             const workbook = XLSX.read(csvText, {type: 'string'});
             const sheetName = workbook.SheetNames[0];
             rawData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
