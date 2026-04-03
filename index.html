@@ -211,7 +211,7 @@
 
             data.forEach(r => {
                 let q = cleanNum(getVal(r, 'QUANTIDADE'));
-                let v = cleanNum(getVal(r, 'VALOR TOTAL'));
+                let v = cleanNum(getVal(r,'VALOR TOTAL') || getVal(r,'VALOR'));
 
                 qtd += q;
                 val += v;
