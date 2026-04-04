@@ -1,247 +1,94 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>FASICLIN • Gestão Inteligente</title>
+<title>Dashboard Clínica</title>
+
+<link rel="stylesheet" href="assets/css/styles.css">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body {
-    font-family: Arial;
-    background: #f5f6fa;
-    padding: 20px;
-}
-
-h1 {
-    margin-bottom: 20px;
-}
-
-.filtros {
-    margin-bottom: 20px;
-}
-
-select, button {
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid #ccc;
-    margin-right: 10px;
-}
-
-button {
-    background: green;
-    color: white;
-    cursor: pointer;
-}
-
-.cards {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.card {
-    background: white;
-    flex: 1;
-    padding: 20px;
-    border-radius: 15px;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.valor {
-    font-size: 28px;
-    color: green;
-}
-
-.graficos {
-    display: flex;
-    gap: 20px;
-}
-
-canvas {
-    background: white;
-    padding: 10px;
-    border-radius: 10px;
-}
-</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body>
 
-<h1>FASICLIN • Gestão Inteligente</h1>
+<div id="loading">
+  <div class="spinner"></div>
+</div>
+<header>
+    <div class="header-logo"><img src="assets/image/logo.png" alt="Logo FASICLIN" /></div>
+    <div class="btn-group">
+        <button class="export" onclick="exportPDF()">📄 Exportar PDF</button>
+        <input type="file" id="fileInput" accept=".xlsx, .xls" style="display:none">
+    </div>
+</header>
+<div class="container">
 
-<div class="filtros">
-    <select id="filtroProcedimento"></select>
+<h1>Dashboard Clínica</h1>
 
-    <button onclick="filtrarMes('todos')">Todos os Meses</button>
-    <button onclick="filtrarMes('02')">Fev</button>
-    <button onclick="filtrarMes('03')">Mar</button>
+<div class="filters">
+  <select id="proc"></select>
+  <div id="mesesDiv"></div>
 </div>
 
 <div class="cards">
-    <div class="card">
-        <h3>Total</h3>
-        <div id="total" class="valor">0</div>
-    </div>
+  <div class="card">
+    <h3>Total Atendimentos</h3>
+    <p id="total"></p>
+  </div>
 
-    <div class="card">
-        <h3>Faturamento</h3>
-        <div id="faturamento" class="valor">R$ 0</div>
-    </div>
+  <div class="card">
+    <h3>Faturamento</h3>
+    <p id="fat"></p>
+  </div>
 
-    <div class="card">
-        <h3>Eficiência</h3>
-        <div id="eficiencia" class="valor">0%</div>
-    </div>
+  <div class="card">
+    <h3>Eficiência</h3>
+    <p id="meta"></p>
+  </div>
 </div>
 
-<div class="graficos">
-    <canvas id="grafico1"></canvas>
-    <canvas id="grafico2"></canvas>
+<div class="chart">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3>Tendência</h3>
+
+    <select id="modoMeta">
+      <option value="diario">Meta Diária</option>
+      <option value="mensal">Meta Mensal</option>
+    </select>
+  </div>
+
+  <canvas id="chartMeta"></canvas>
 </div>
 
-<script>
+<div class="grid-2">
+  <div class="chart">
+    <h3>Produção por Turma</h3>
+    <canvas id="chartTurma"></canvas>
+  </div>
 
-const URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTV14Ylz2lkaCPJEyR7lJHHbVfO7qD4hGwTaqoCxHC8I1vIuwU_2X0idkNswPkO8tum1kmScpspHo5A/pub?output=csv";
+  <div class="chart">
+    <h3>atendimento por Turma</h3>
+    <canvas id="chartClinica"></canvas>
+  </div>
+</div>
 
-let dados = [];
-let mesSelecionado = "todos";
+<div class="grid-2">
+  <div class="chart">
+    <h3>Distribuição por Clínica</h3>
+    <canvas id="chartClinica"></canvas>
+  </div>
+</div>
 
-async function carregarDados() {
-    try {
-        const res = await fetch(URL);
-        const texto = await res.text();
+<div class="chart">
+  <h3>Ranking de Receita</h3>
+  <canvas id="chartProcedimento"></canvas>
+</div>
 
-        const linhas = texto.split("\n");
+</div>
 
-        // REMOVE CABEÇALHO
-        linhas.shift();
-
-        dados = linhas.map(linha => {
-            // REGEX PROFISSIONAL PRA CSV (resolve vírgula em valores)
-            const col = linha.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-
-            if (!col || col.length < 4) return null;
-
-            let data = (col[0] || "").replace(/"/g, "").trim();
-            let procedimento = (col[1] || "").replace(/"/g, "").trim();
-            let quantidade = parseFloat((col[2] || "0").replace(",", ".")) || 0;
-
-            let valorRaw = (col[3] || "")
-                .replace(/"/g, "")
-                .replace("R$", "")
-                .replace(/\./g, "")
-                .replace(",", ".")
-                .trim();
-
-            let valor = parseFloat(valorRaw) || 0;
-
-            return { data, procedimento, quantidade, valor };
-
-        }).filter(d => d && d.procedimento);
-
-        console.log("🔥 Dados tratados:", dados);
-
-        montarFiltro();
-        atualizar();
-
-    } catch (e) {
-        alert("Erro ao carregar dados");
-        console.error(e);
-    }
-}
-
-function montarFiltro() {
-    const select = document.getElementById("filtroProcedimento");
-
-    const procedimentos = [...new Set(dados.map(d => d.procedimento))];
-
-    select.innerHTML = '<option value="todos">Todos</option>';
-
-    procedimentos.forEach(p => {
-        select.innerHTML += `<option value="${p}">${p}</option>`;
-    });
-
-    select.onchange = atualizar;
-}
-
-function filtrarMes(mes) {
-    mesSelecionado = mes;
-    atualizar();
-}
-
-function atualizar() {
-    const proc = document.getElementById("filtroProcedimento").value;
-
-    let filtrados = dados.filter(d => {
-
-        let okProc = proc === "todos" || d.procedimento === proc;
-
-        let okMes = true;
-        if (mesSelecionado !== "todos") {
-            if (!d.data.includes("/")) return false;
-            okMes = d.data.split("/")[1] === mesSelecionado;
-        }
-
-        return okProc && okMes;
-    });
-
-    console.log("📊 Filtrados:", filtrados);
-
-    let total = filtrados.reduce((s, d) => s + d.quantidade, 0);
-    let faturamento = filtrados.reduce((s, d) => s + d.valor, 0);
-
-    document.getElementById("total").innerText = total;
-    document.getElementById("faturamento").innerText = "R$ " + faturamento.toFixed(2);
-
-    let eficiencia = total > 0 ? (faturamento / total) : 0;
-    document.getElementById("eficiencia").innerText = (eficiencia * 100).toFixed(1) + "%";
-
-    gerarGraficos(filtrados);
-}
-
-let grafico1, grafico2;
-
-function gerarGraficos(dados) {
-    let mapa = {};
-
-    dados.forEach(d => {
-        mapa[d.procedimento] = (mapa[d.procedimento] || 0) + d.valor;
-    });
-
-    const labels = Object.keys(mapa);
-    const valores = Object.values(mapa);
-
-    if (grafico1) grafico1.destroy();
-
-    grafico1 = new Chart(document.getElementById("grafico1"), {
-        type: "bar",
-        data: {
-            labels,
-            datasets: [{
-                label: "Faturamento",
-                data: valores
-            }]
-        }
-    });
-
-    if (grafico2) grafico2.destroy();
-
-    grafico2 = new Chart(document.getElementById("grafico2"), {
-        type: "pie",
-        data: {
-            labels,
-            datasets: [{
-                data: valores
-            }]
-        }
-    });
-}
-
-carregarDados();
-
-</script>
+<script type="module" src="assets/js/app.js"></script>
 
 </body>
 </html>
