@@ -1,94 +1,102 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<title>Dashboard Clínica</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Fasiclin | Gestão Clínica</title>
+    
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
-<link rel="stylesheet" href="assets/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
-
 <body>
 
-<div id="loading">
-  <div class="spinner"></div>
-</div>
-<header>
-    <div class="header-logo"><img src="assets/image/logo.png" alt="Logo FASICLIN" /></div>
-    <div class="btn-group">
-        <button class="export" onclick="exportPDF()">📄 Exportar PDF</button>
-        <input type="file" id="fileInput" accept=".xlsx, .xls" style="display:none">
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Processando dados...</p>
     </div>
-</header>
-<div class="container">
 
-<h1>Dashboard Clínica</h1>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="assets/image/logo.png" alt="Fasiclin Logo">
+                <span>Gestão Clínica</span>
+            </div>
+            <div class="actions">
+                <button class="btn-export" onclick="exportPDF()">
+                    <i>📄</i> Exportar Relatório PDF
+                </button>
+            </div>
+        </div>
+    </header>
 
-<div class="filters">
-  <select id="proc"></select>
-  <div id="mesesDiv"></div>
-</div>
+    <main class="container">
+        <section class="filter-bar">
+            <div class="filter-group">
+                <label for="proc">🎯 Procedimento</label>
+                <select id="proc"></select>
+            </div>
+            <div class="filter-group">
+                <label>📅 Período</label>
+                <div id="mesesDiv" class="btn-group-months"></div>
+            </div>
+        </section>
 
-<div class="cards">
-  <div class="card">
-    <h3>Total Atendimentos</h3>
-    <p id="total"></p>
-  </div>
+        <section class="kpi-grid">
+            <div class="card highlight">
+                <h3>Total Atendimentos</h3>
+                <p id="total">0</p>
+            </div>
+            <div class="card highlight">
+                <h3>Faturamento Total</h3>
+                <p id="fat">R$ 0,00</p>
+            </div>
+            <div class="card highlight">
+                <h3>Eficiência vs Meta</h3>
+                <p id="meta">0%</p>
+            </div>
+        </section>
 
-  <div class="card">
-    <h3>Faturamento</h3>
-    <p id="fat"></p>
-  </div>
+        <section class="dashboard-grid">
+            <div class="chart-container full-width">
+                <div class="chart-header">
+                    <h3>Tendência de Atendimento</h3>
+                    <select id="modoMeta">
+                        <option value="diario">Visão Diária</option>
+                        <option value="mensal">Visão Mensal</option>
+                    </select>
+                </div>
+                <canvas id="chartMeta"></canvas>
+            </div>
 
-  <div class="card">
-    <h3>Eficiência</h3>
-    <p id="meta"></p>
-  </div>
-</div>
+            <div class="chart-container">
+                <h3>Produção Financeira (Turma)</h3>
+                <canvas id="chartTurma"></canvas>
+            </div>
 
-<div class="chart">
-  <div style="display:flex;justify-content:space-between;align-items:center;">
-    <h3>Tendência</h3>
+            <div class="chart-container">
+                <h3>Volume de Atendimento (Turma)</h3>
+                <canvas id="chartTurmaQtd"></canvas>
+            </div>
 
-    <select id="modoMeta">
-      <option value="diario">Meta Diária</option>
-      <option value="mensal">Meta Mensal</option>
-    </select>
-  </div>
+            
+            <div class="chart-container full-width">
+                <h3>Ranking de Receita (Procedimento)</h3>
+                <canvas id="chartProcedimento"></canvas>
+            </div>
 
-  <canvas id="chartMeta"></canvas>
-</div>
+            <div class="chart-container full-width">
+                <h3>Distribuição por Clínica</h3>
+                <canvas id="chartClinica"></canvas>
+            </div>
+        </section>
+    </main>
 
-<div class="grid-2">
-  <div class="chart">
-    <h3>Produção por Turma</h3>
-    <canvas id="chartTurma"></canvas>
-  </div>
-
-  <div class="chart">
-    <h3>atendimento por Turma</h3>
-    <canvas id="chartClinica"></canvas>
-  </div>
-</div>
-
-<div class="grid-2">
-  <div class="chart">
-    <h3>Distribuição por Clínica</h3>
-    <canvas id="chartClinica"></canvas>
-  </div>
-</div>
-
-<div class="chart">
-  <h3>Ranking de Receita</h3>
-  <canvas id="chartProcedimento"></canvas>
-</div>
-
-</div>
-
-<script type="module" src="assets/js/app.js"></script>
-
+    <script type="module" src="assets/js/app.js"></script>
 </body>
 </html>
