@@ -9,7 +9,11 @@
     --radius: 12px;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
 body {
     font-family: 'Inter', sans-serif;
@@ -18,7 +22,11 @@ body {
     line-height: 1.5;
 }
 
-.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
 
 /* Header */
 header {
@@ -37,8 +45,24 @@ header {
     padding: 0 20px;
 }
 
-.logo { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--primary); }
-.logo img { height: 40px; }
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.logo img {
+    height: 40px;
+}
+
+.logo span {
+
+    padding-top: 1.5rem;
+    font-weight: 900;
+
+}
 
 /* Filtros */
 .filter-bar {
@@ -52,8 +76,17 @@ header {
     align-items: flex-end;
 }
 
-.filter-group { display: flex; flex-direction: column; gap: 8px; }
-.filter-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
 
 select {
     padding: 10px;
@@ -63,7 +96,12 @@ select {
     min-width: 200px;
 }
 
-.btn-group-months { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-group-months {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
 .btn-group-months button {
     padding: 8px 16px;
     border: 1px solid #e2e8f0;
@@ -95,9 +133,22 @@ select {
     box-shadow: var(--shadow);
 }
 
-.card h3 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; }
-.card p { font-size: 1.8rem; font-weight: 700; color: var(--text-main); }
-.card.highlight p { color: var(--primary); }
+.card h3 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.card p {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.card.highlight p {
+    color: var(--primary);
+}
 
 /* Gráficos */
 .dashboard-grid {
@@ -113,7 +164,9 @@ select {
     box-shadow: var(--shadow);
 }
 
-.full-width { grid-column: span 2; }
+.full-width {
+    grid-column: span 2;
+}
 
 .chart-header {
     display: flex;
@@ -126,13 +179,13 @@ select {
 #loading {
     position: fixed;
     inset: 0;
-    background: rgba(255,255,255,0.8);
+    background: rgba(255, 255, 255, 0.8);
     display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    
+
 }
 
 .spinner {
@@ -145,7 +198,15 @@ select {
     margin-bottom: 10px;
 }
 
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
 
 .btn-export {
     background: var(--primary);

@@ -3,7 +3,6 @@ import { filtrar, calcular } from "./dashboard.js";
 import { renderCharts } from "./charts.js";
 import { formatarMoeda, getMesAno } from "./utils.js";
 
-
 let dadosGerais = [];
 let filtroMes = "TODOS";
 let modoMeta = "diario";
