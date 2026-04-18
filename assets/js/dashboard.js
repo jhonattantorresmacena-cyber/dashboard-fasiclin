@@ -1,79 +1,73 @@
 import { getMesAno } from "./utils.js";
 
-//////////////////////////////////////////////////////////////
-
 export function filtrar(dados, proc, mes) {
-  return dados.filter(d =>
-    (proc === "TODOS" || d.procedimento === proc) &&
-    (mes === "TODOS" || getMesAno(d.data) === mes)
+  return dados.filter(
+    (d) =>
+      (proc === "TODOS" || d.procedimento === proc) &&
+      (mes === "TODOS" || getMesAno(d.data) === mes),
   );
 }
 
-//////////////////////////////////////////////////////////////
-
 export function calcular(dados) {
+  // Inicialização segura
+  let metricas = {
+    totalQtd: 0,
+    faturamento: 0,
+    porProcVal: {},
+    porProcQtd: {},
+    porTurmaVal: {},
+    porTurmaQtd: {},
+    porClinica: {},
+    porData: {},
+    metaPorData: {},
+  };
 
-  let totalQtd = 0;
-  let faturamento = 0;
+  if (!dados || dados.length === 0) return metricas;
 
-  let porProc = {};
-  let porTurma = {};
-  let porClinica = {};
-  let porData = {};
-  let metaPorData = {};
-
-  dados.forEach(d => {
-
-    // 🔹 segurança de dados
+  dados.forEach((d) => {
     const qtd = d.quantidade || 0;
-    const val = d.valor || 0;
-    const meta = d.metaDia || 40;
+    const valTotal = d.valor || 0; // Mapeado da Coluna E (valor total)
+    const metaDia = d.metaDia || 0;
 
-    totalQtd += qtd;
-    faturamento += val;
+    metricas.totalQtd += qtd;
+    metricas.faturamento += valTotal;
 
-    // 🔹 agrupamento por procedimento (faturamento)
-    porProc[d.procedimento] =
-      (porProc[d.procedimento] || 0) + val;
+    // Agrupamentos por Procedimento
+    metricas.porProcVal[d.procedimento] =
+      (metricas.porProcVal[d.procedimento] || 0) + valTotal;
+    metricas.porProcQtd[d.procedimento] =
+      (metricas.porProcQtd[d.procedimento] || 0) + qtd;
 
-    // 🔹 agrupamento por turma (quantidade)
-    porTurma[d.turma] =
-      (porTurma[d.turma] || 0) + qtd;
+    // Agrupamentos por Turma
+    metricas.porTurmaVal[d.turma] =
+      (metricas.porTurmaVal[d.turma] || 0) + valTotal;
+    metricas.porTurmaQtd[d.turma] = (metricas.porTurmaQtd[d.turma] || 0) + qtd;
 
-    // 🔹 agrupamento por clínica (quantidade)
-    porClinica[d.clinica] =
-      (porClinica[d.clinica] || 0) + qtd;
+    // Outros Agrupamentos
+    metricas.porClinica[d.clinica] =
+      (metricas.porClinica[d.clinica] || 0) + qtd;
+    metricas.porData[d.data] = (metricas.porData[d.data] || 0) + qtd;
 
-    // 🔹 agrupamento por data (quantidade)
-    porData[d.data] =
-      (porData[d.data] || 0) + qtd;
-
-    // 🔥 CORREÇÃO CRÍTICA:
-    // meta não pode somar várias vezes no mesmo dia
-    if (!metaPorData[d.data]) {
-      metaPorData[d.data] = meta;
+    // REGRA DE META: Não somar a meta várias vezes no mesmo dia
+    if (
+      !metricas.metaPorData[d.data] ||
+      metaDia > metricas.metaPorData[d.data]
+    ) {
+      metricas.metaPorData[d.data] = metaDia;
     }
+
+    metricas.porData[d.data] = (metricas.porData[d.data] || 0) + qtd;
+    metricas.metaPorData[d.data] = d.metaDia;
   });
 
-  //////////////////////////////////////////////////////////
+  // CÁLCULO DA EFICIÊNCIA FINAL
+  const totalRealizado = metricas.totalQtd;
+  const totalMeta = Object.values(metricas.metaPorData).reduce(
+    (a, b) => a + b,
+    0,
+  );
 
-  const totalMeta = Object.values(metaPorData)
-    .reduce((a, b) => a + b, 0);
+  metricas.eficiencia = totalMeta > 0 ? (totalRealizado / totalMeta) * 100 : 0;
 
-  //////////////////////////////////////////////////////////
-
-  return {
-    totalQtd,
-    faturamento,
-
-    eficiencia: totalMeta
-      ? Math.min((totalQtd / totalMeta) * 100, 999)
-      : 0,
-
-    porProc,
-    porTurma,
-    porClinica,
-    porData,
-    metaPorData
-  };
+  return metricas;
 }

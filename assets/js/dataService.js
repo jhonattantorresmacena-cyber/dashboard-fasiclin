@@ -2,7 +2,6 @@ import { CONFIG } from "./config.js";
 import { parseCSV } from "./utils.js";
 
 export async function fetchDados() {
-
   const cache = localStorage.getItem(CONFIG.CACHE_KEY);
 
   if (cache) {
@@ -15,8 +14,9 @@ export async function fetchDados() {
 
   const dados = parseCSV(text);
 
-  localStorage.setItem(CONFIG.CACHE_KEY,
-    JSON.stringify({ data: dados, time: Date.now() })
+  localStorage.setItem(
+    CONFIG.CACHE_KEY,
+    JSON.stringify({ data: dados, time: Date.now() }),
   );
 
   return dados;
